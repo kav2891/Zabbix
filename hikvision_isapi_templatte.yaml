@@ -1,0 +1,562 @@
+zabbix_export:
+  version: '6.2'
+  date: '2023-08-01T09:13:09Z'
+  template_groups:
+    -
+      uuid: c29025d5fdbb430ba416c690e9a45ecd
+      name: 'pantsir templates'
+  templates:
+    -
+      uuid: 25a2ef79c54846aeac4b2e28079a2f3f
+      template: 'Hikvision ISAPI'
+      name: 'Hikvision ISAPI'
+      groups:
+        -
+          name: 'pantsir templates'
+      items:
+        -
+          uuid: 8add7c7d8f01480aa0c77a16c4c6ff35
+          name: 'DVR firmware version'
+          type: DEPENDENT
+          key: hik.device.firmvare.version
+          delay: '0'
+          trends: '0'
+          value_type: TEXT
+          inventory_link: OS
+          preprocessing:
+            -
+              type: JSONPATH
+              parameters:
+                - $.DeviceInfo.firmwareVersion
+          master_item:
+            key: hik.get.dvr.info
+          tags:
+            -
+              tag: DVR
+              value: Info
+        -
+          uuid: 0b7396b5803e4bf18b03aa7f83473dc9
+          name: 'DVR model'
+          type: DEPENDENT
+          key: hik.device.model
+          delay: '0'
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          inventory_link: MODEL
+          preprocessing:
+            -
+              type: JSONPATH
+              parameters:
+                - $.DeviceInfo.model
+          master_item:
+            key: hik.get.dvr.info
+          tags:
+            -
+              tag: DVR
+              value: Info
+        -
+          uuid: d97959cd72be42b4a74f6778553cf0eb
+          name: 'DVR name'
+          type: DEPENDENT
+          key: hik.device.name
+          delay: '0'
+          trends: '0'
+          value_type: TEXT
+          preprocessing:
+            -
+              type: JSONPATH
+              parameters:
+                - $.DeviceInfo.deviceName
+          master_item:
+            key: hik.get.dvr.info
+          tags:
+            -
+              tag: DVR
+              value: Info
+        -
+          uuid: 6f2e785a9a9a4968b508060e158a2fb2
+          name: 'DVR uptime'
+          type: DEPENDENT
+          key: hik.device.uptime
+          delay: '0'
+          history: 30d
+          trends: 90d
+          units: uptime
+          preprocessing:
+            -
+              type: JSONPATH
+              parameters:
+                - $.DeviceStatus.deviceUpTime
+          master_item:
+            key: hik.get.dvr.status
+          tags:
+            -
+              tag: DVR
+              value: Info
+        -
+          uuid: a731e5275c174e988734972b12e9ab1a
+          name: 'Cameras: Get Info'
+          type: HTTP_AGENT
+          key: hik.get.cameras.info
+          history: 30d
+          trends: '0'
+          value_type: TEXT
+          authtype: DIGEST
+          username: '{$HIK.USR}'
+          password: '{$HIK.PASS}'
+          preprocessing:
+            -
+              type: XML_TO_JSON
+              parameters:
+                - ''
+            -
+              type: STR_REPLACE
+              parameters:
+                - '"@version":"1.0",'
+                - ''
+            -
+              type: JAVASCRIPT
+              parameters:
+                - |
+                  var json = JSON.parse(value);
+                  var data = '\{\"data\"\:\[';
+                  var camId,isEnabled, cameraName, videoFormat, resolution;
+                  for (var prop in json["VideoInputChannelList"]["VideoInputChannel"]) {
+                    camId = json["VideoInputChannelList"]["VideoInputChannel"][prop]["id"];
+                    isEnabled = json["VideoInputChannelList"]["VideoInputChannel"][prop]["videoInputEnabled"];
+                    cameraName = json["VideoInputChannelList"]["VideoInputChannel"][prop]["name"];
+                    videoFormat = json["VideoInputChannelList"]["VideoInputChannel"][prop]["videoFormat"]
+                    resolution = json["VideoInputChannelList"]["VideoInputChannel"][prop]["resDesc"]
+                    data += "\{\"\{\#CAMERA_ID\}\"\: \""+  camId  +"\"\,\"\{\#CAMERA_ENABLED\}\"\: \""+  isEnabled  +"\"\, \"\{\#CAMERA_NAME\}\"\: \""+  cameraName  + "\"\, \"\{\#CAMERA_FORMAT\}\"\: \""+  videoFormat  + "\"\, \"\{\#CAMERA_RESOLUTION\}\"\: \""+  resolution + "\"\ }\, "    
+                  }
+                  return data.substring(0, data.length - 2) + "\]\}"
+          url: 'http://{$HIK.IP}/ISAPI/System/Video/inputs/channels'
+        -
+          uuid: 2e3874a5c33a4e408bbe7a3a5d1be878
+          name: 'Chanels: Get Info'
+          type: HTTP_AGENT
+          key: hik.get.chanel.info
+          history: 30d
+          trends: '0'
+          value_type: TEXT
+          authtype: DIGEST
+          username: '{$HIK.USR}'
+          password: '{$HIK.PASS}'
+          preprocessing:
+            -
+              type: XML_TO_JSON
+              parameters:
+                - ''
+            -
+              type: STR_REPLACE
+              parameters:
+                - '"@version":"1.0",'
+                - ''
+            -
+              type: JAVASCRIPT
+              parameters:
+                - |
+                  var json = JSON.parse(value);
+                  var data = '\{\"data\"\:\[';
+                  var chanelId,isChanelEnabled, inputChanelId;
+                  for (var prop in json["StreamingChannelList"]["StreamingChannel"]) {
+                    chanelId = json["StreamingChannelList"]["StreamingChannel"][prop]["id"];
+                    isChanelEnabled = json["StreamingChannelList"]["StreamingChannel"][prop]["Video"]["enabled"];
+                    inputChanelId = json["StreamingChannelList"]["StreamingChannel"][prop]["Video"]["videoInputChannelID"];
+                    data += "\{\"\{\#CHANEL_ID\}\"\: \""+  chanelId  +"\"\,\"\{\#ISCHANEL_ENABLED\}\"\: \""+  isChanelEnabled  +"\"\, \"\{\#INPUTCHANEL_ID\}\"\: \""+  inputChanelId  + "\"\}\, "    
+                  }
+                  return data.substring(0, data.length - 2) + "\]\}"
+          url: 'http://{$HIK.IP}/ISAPI/Streaming/channels/'
+        -
+          uuid: cb303a6f273b48a28eba4a3922e59fe3
+          name: 'DVR: Get Info'
+          type: HTTP_AGENT
+          key: hik.get.dvr.info
+          trends: '0'
+          value_type: TEXT
+          authtype: DIGEST
+          username: '{$HIK.USR}'
+          password: '{$HIK.PASS}'
+          preprocessing:
+            -
+              type: CHECK_NOT_SUPPORTED
+              parameters:
+                - ''
+            -
+              type: XML_TO_JSON
+              parameters:
+                - ''
+            -
+              type: STR_REPLACE
+              parameters:
+                - '"@version":"1.0",'
+                - ''
+          url: 'http://{$HIK.IP}/ISAPI/System/deviceInfo'
+        -
+          uuid: 31b50db79dc247308088155d0747df33
+          name: 'DVR: Get status'
+          type: HTTP_AGENT
+          key: hik.get.dvr.status
+          trends: '0'
+          value_type: TEXT
+          authtype: DIGEST
+          username: '{$HIK.USR}'
+          password: '{$HIK.PASS}'
+          preprocessing:
+            -
+              type: CHECK_NOT_SUPPORTED
+              parameters:
+                - ''
+            -
+              type: XML_TO_JSON
+              parameters:
+                - ''
+            -
+              type: STR_REPLACE
+              parameters:
+                - '"@version":"1.0",'
+                - ''
+          url: 'http://{$HIK.IP}/ISAPI/System/Status'
+        -
+          uuid: 97a591d81bad4ed399564f9de59e2e33
+          name: 'HDD: Get Info'
+          type: HTTP_AGENT
+          key: hik.get.hdd.info
+          history: 30d
+          trends: '0'
+          value_type: TEXT
+          authtype: DIGEST
+          username: '{$HIK.USR}'
+          password: '{$HIK.PASS}'
+          preprocessing:
+            -
+              type: XML_TO_JSON
+              parameters:
+                - ''
+            -
+              type: STR_REPLACE
+              parameters:
+                - '"@version":"1.0",'
+                - ''
+            -
+              type: JAVASCRIPT
+              parameters:
+                - |
+                  var json = JSON.parse(value);
+                  var data = '\{\"data\"\:\[';
+                  var hddId,hddName,hddType,hddStatus,hddCapacity;
+                  for (var prop in json["storage"]["hddList"]) {
+                    hddId = json["storage"]["hddList"][prop]["id"];
+                    hddName = json["storage"]["hddList"][prop]["hddName"];
+                    hddType = json["storage"]["hddList"][prop]["hddType"];
+                    hddStatus = json["storage"]["hddList"][prop]["status"];
+                    hddCapacity = json["storage"]["hddList"][prop]["capacity"];
+                  
+                    data += "\{\"\{\#HDD_ID\}\"\: \""+  hddId  +"\"\,\"\{\#HDD_NAME\}\"\: \""+  hddName  +"\"\, \"\{\#HDD_TYPE\}\"\: \""+  hddType  + "\"\, \"\{\#HDD_STATUS\}\"\: \""+  hddStatus  + "\"\, \"\{\#HDD_CAPACITY\}\"\: \""+  hddCapacity  + "\"\ }\, "    
+                  }
+                  return data.substring(0, data.length - 2) + "\]\}"
+          url: 'http://{$HIK.IP}/ISAPI/ContentMgmt/Storage/'
+        -
+          uuid: 87d0a5118d0347b2bdfca83e58fc70b3
+          name: 'DVR Ping'
+          type: SIMPLE
+          key: icmpping
+          history: 30d
+          trends: 90d
+          valuemap:
+            name: 'DVR status'
+          tags:
+            -
+              tag: DVR
+              value: Ping
+          triggers:
+            -
+              uuid: 7f75082c9bfd491ea26cc398fbdbd920
+              expression: 'last(/Hikvision ISAPI/icmpping,#5)=0'
+              name: 'DVR {HOST.NAME} {HOST.IP} is down'
+              event_name: 'Видеорегистратор {HOST.NAME} {HOST.IP} не доступен'
+              priority: HIGH
+      discovery_rules:
+        -
+          uuid: f3179486cb4d4bdd8def330b77e310e9
+          name: 'Cameras Discovery'
+          type: DEPENDENT
+          key: hik.cameras.discovery
+          delay: '0'
+          item_prototypes:
+            -
+              uuid: 7bfe641e8d294891867fd9be630ad1d5
+              name: 'Video Format: Camera {#CAMERA_NAME}'
+              type: HTTP_AGENT
+              key: 'hik.get_cam_format[{#CAMERA_NAME}]'
+              history: 30d
+              trends: '0'
+              value_type: TEXT
+              authtype: DIGEST
+              username: '{$HIK.USR}'
+              password: '{$HIK.PASS}'
+              preprocessing:
+                -
+                  type: XML_TO_JSON
+                  parameters:
+                    - ''
+                -
+                  type: STR_REPLACE
+                  parameters:
+                    - '"@version":"1.0",'
+                    - ''
+                -
+                  type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var json = JSON.parse(value);
+                      function getState(videoFormat) {
+                        if (videoFormat != "") {
+                          return videoFormat;
+                        } else {
+                          return "N/A";
+                        }
+                      }
+                      return getState(json.VideoInputChannel.videoFormat);
+              url: 'http://{$HIK.IP}/ISAPI/System/Video/inputs/channels/{#CAMERA_ID}/'
+              tags:
+                -
+                  tag: Camera
+                  value: 'Video Format'
+            -
+              uuid: 6fd3d79ffd804407b79a5cf7341b74bd
+              name: 'Resolution: Camera {#CAMERA_NAME}'
+              type: HTTP_AGENT
+              key: 'hik.get_cam_res[{#CAMERA_NAME}]'
+              history: 30d
+              trends: '0'
+              value_type: TEXT
+              authtype: DIGEST
+              username: '{$HIK.USR}'
+              password: '{$HIK.PASS}'
+              preprocessing:
+                -
+                  type: XML_TO_JSON
+                  parameters:
+                    - ''
+                -
+                  type: STR_REPLACE
+                  parameters:
+                    - '"@version":"1.0",'
+                    - ''
+                -
+                  type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var json = JSON.parse(value);
+                      function getState(resDesc) {
+                        if (resDesc != "") {
+                          return resDesc;
+                        } else {
+                          return "N/A";
+                        }
+                      }
+                      return getState(json.VideoInputChannel.resDesc);
+              url: 'http://{$HIK.IP}/ISAPI/System/Video/inputs/channels/{#CAMERA_ID}/'
+              tags:
+                -
+                  tag: Camera
+                  value: Resolution
+            -
+              uuid: 640758d4128b48f1bb0b9b6376fdc506
+              name: 'Status: Camera {#CAMERA_NAME}'
+              type: HTTP_AGENT
+              key: 'hik.get_cam_status[{#CAMERA_NAME}]'
+              history: 30d
+              trends: '0'
+              value_type: TEXT
+              authtype: DIGEST
+              username: '{$HIK.USR}'
+              password: '{$HIK.PASS}'
+              preprocessing:
+                -
+                  type: XML_TO_JSON
+                  parameters:
+                    - ''
+                -
+                  type: STR_REPLACE
+                  parameters:
+                    - '"@version":"1.0",'
+                    - ''
+                -
+                  type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var json = JSON.parse(value);
+                      function getState(videoInputEnabled) {
+                      if (videoInputEnabled === "true"){
+                      	return "Up"
+                      } else {
+                      	return "Down"
+                      } 
+                      }
+                      return getState(json.VideoInputChannel.videoInputEnabled);
+              url: 'http://{$HIK.IP}/ISAPI/System/Video/inputs/channels/{#CAMERA_ID}/'
+              tags:
+                -
+                  tag: Camera
+                  value: Status
+              trigger_prototypes:
+                -
+                  uuid: 0bbd1ca533da416f981ba5867ce6392f
+                  expression: 'last(/Hikvision ISAPI/hik.get_cam_status[{#CAMERA_NAME}])<>"Up"'
+                  name: 'Camera {#CAMERA_NAME} not avaliable'
+                  event_name: 'Камера {#CAMERA_NAME} на устройстве {HOST.NAME} {HOST.IP} не доступна'
+                  priority: HIGH
+          master_item:
+            key: hik.get.cameras.info
+        -
+          uuid: 83903b0ec8da4b6ebcbea7dfd6c14350
+          name: 'Chanel Discovery'
+          type: DEPENDENT
+          key: hik.chanel.discovery
+          delay: '0'
+          item_prototypes:
+            -
+              uuid: ce192b396e004dfba0681b3d36417a37
+              name: 'Chanel: Picture status on chanel {#CHANEL_ID}'
+              type: HTTP_AGENT
+              key: 'hik.chanel_get_picture_lenght[{#CHANEL_ID}]'
+              history: 30d
+              trends: 90d
+              units: B
+              authtype: DIGEST
+              username: '{$HIK.USR}'
+              password: '{$HIK.PASS}'
+              preprocessing:
+                -
+                  type: REGEX
+                  parameters:
+                    - '^([\s\S]*(Content-Length:\s(\d+)))'
+                    - \3
+              url: 'http://{$HIK.IP}/ISAPI/Streaming/channels/{#CHANEL_ID}/picture'
+              retrieve_mode: HEADERS
+              trigger_prototypes:
+                -
+                  uuid: 19250471ce044cf09032f5a6224c20d6
+                  expression: 'last(/Hikvision ISAPI/hik.chanel_get_picture_lenght[{#CHANEL_ID}])<{$HIK.IMAGE.LENGHT.MIN.WARN}'
+                  name: 'Low lenght image on chanel {#CHANEL_ID}'
+                  event_name: 'Нет видеопотока на канале  {#CHANEL_ID} на устройстве {HOST.NAME} {HOST.IP}'
+                  priority: HIGH
+                  manual_close: 'YES'
+          master_item:
+            key: hik.get.chanel.info
+        -
+          uuid: 6a4df690fccd4c8194d7bd9c66dc2005
+          name: 'HDD Discovery'
+          type: DEPENDENT
+          key: hik.hdd.discovery
+          delay: '0'
+          item_prototypes:
+            -
+              uuid: 9dcb89f33d11482b9849268cc52595cb
+              name: 'HDD {#HDD_NAME}: Capacity'
+              type: HTTP_AGENT
+              key: 'hik.get.hdd.capacity[{#HDD_NAME}]'
+              history: 30d
+              trends: 90d
+              value_type: FLOAT
+              authtype: DIGEST
+              username: '{$HIK.USR}'
+              password: '{$HIK.PASS}'
+              preprocessing:
+                -
+                  type: XML_TO_JSON
+                  parameters:
+                    - ''
+                -
+                  type: STR_REPLACE
+                  parameters:
+                    - '"@version":"1.0",'
+                    - ''
+                -
+                  type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var json = JSON.parse(value);
+                      function getState(capacity) {
+                        if (capacity != "") {
+                          return capacity;
+                        } else {
+                          return "N/A";
+                        }
+                      }
+                      return getState(json.hdd.capacity) / 1024;
+              url: 'http://{$HIK.IP}/ISAPI/ContentMgmt/Storage/hdd/{#HDD_ID}/'
+              tags:
+                -
+                  tag: HDD
+                  value: Capacity
+            -
+              uuid: cb3e7fdba4f14ce59309ff9cd82a6ee5
+              name: 'HDD {#HDD_NAME}: Status'
+              type: HTTP_AGENT
+              key: 'hik.get.hdd.status[{#HDD_NAME}]'
+              trends: '0'
+              value_type: TEXT
+              authtype: DIGEST
+              username: '{$HIK.USR}'
+              password: '{$HIK.PASS}'
+              preprocessing:
+                -
+                  type: XML_TO_JSON
+                  parameters:
+                    - ''
+                -
+                  type: STR_REPLACE
+                  parameters:
+                    - '"@version":"1.0",'
+                    - ''
+                -
+                  type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var json = JSON.parse(value);
+                      function getState(status) {
+                        if (status != "") {
+                          return status;
+                        } else {
+                          return "N/A";
+                        }
+                      }
+                      return getState(json.hdd.status);
+              url: 'http://{$HIK.IP}/ISAPI/ContentMgmt/Storage/hdd/{#HDD_ID}/'
+              tags:
+                -
+                  tag: HDD
+                  value: Status
+              trigger_prototypes:
+                -
+                  uuid: 3afd947db19844e882b5154fc83287c2
+                  expression: 'last(/Hikvision ISAPI/hik.get.hdd.status[{#HDD_NAME}])<>"ok"'
+                  name: 'HDD {#HDD_NAME} status is not ok'
+                  priority: HIGH
+          master_item:
+            key: hik.get.hdd.info
+      macros:
+        -
+          macro: '{$HIK.IMAGE.LENGHT.MIN.WARN}'
+          value: '5000'
+        -
+          macro: '{$HIK.IP}'
+        -
+          macro: '{$HIK.PASS}'
+        -
+          macro: '{$HIK.USR}'
+      valuemaps:
+        -
+          uuid: 22e81b54090a4466beac8ea51f7d185d
+          name: 'DVR status'
+          mappings:
+            -
+              value: '1'
+              newvalue: Available
+            -
+              value: '0'
+              newvalue: 'Not available'
